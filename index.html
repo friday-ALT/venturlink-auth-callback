@@ -172,20 +172,40 @@
       return `venturlink://auth/callback#${hashParts.join('&')}`;
     }
     
+    // Check if we're on mobile device
+    function isMobileDevice() {
+      return /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+    }
+    
     // Redirect to app
     function redirectToApp() {
       const tokens = extractTokens();
       const appUrl = buildAppUrl(tokens);
       
       if (appUrl) {
-        // Try to open the app
-        window.location.href = appUrl;
-        
-        // Fallback: If app doesn't open within 2 seconds, show instructions
-        setTimeout(() => {
+        // On mobile, try to open the app
+        if (isMobileDevice()) {
+          // Try using window.open first (more reliable on iOS)
+          const opened = window.open(appUrl, '_self');
+          
+          // Fallback: If that doesn't work, try location.href
+          setTimeout(() => {
+            if (!opened || opened.closed) {
+              window.location.href = appUrl;
+            }
+          }, 100);
+          
+          // Show instructions if app doesn't open
+          setTimeout(() => {
+            document.getElementById('redirectMessage').innerHTML = 
+              'If VenturLink didn\'t open automatically,<br>please open the app manually.';
+          }, 2000);
+        } else {
+          // Desktop Safari - show instructions
           document.getElementById('redirectMessage').innerHTML = 
-            'If the app didn\'t open automatically,<br>please open VenturLink manually.';
-        }, 2000);
+            'Please open this link on your iPhone or iPad<br>where VenturLink is installed.<br><br>' +
+            'Or copy this link and open it in the VenturLink app.';
+        }
       } else {
         // No tokens found - might be a direct redirect
         // Check if redirect_to parameter exists
@@ -193,10 +213,21 @@
         const redirectTo = urlParams.get('redirect_to');
         
         if (redirectTo) {
-          window.location.href = decodeURIComponent(redirectTo);
+          const decodedRedirect = decodeURIComponent(redirectTo);
+          if (isMobileDevice()) {
+            window.location.href = decodedRedirect;
+          } else {
+            document.getElementById('redirectMessage').innerHTML = 
+              'Please open this link on your iPhone or iPad<br>where VenturLink is installed.';
+          }
         } else {
           // Fallback: try to redirect to app anyway
-          window.location.href = 'venturlink://auth/callback';
+          if (isMobileDevice()) {
+            window.location.href = 'venturlink://auth/callback';
+          } else {
+            document.getElementById('redirectMessage').innerHTML = 
+              'Please open this link on your iPhone or iPad<br>where VenturLink is installed.';
+          }
         }
       }
     }
@@ -220,10 +251,20 @@
           if (tokens.type) hashParts.push(`type=${encodeURIComponent(tokens.type)}`);
           
           const finalUrl = `${decodedRedirect}#${hashParts.join('&')}`;
-          window.location.href = finalUrl;
+          if (isMobileDevice()) {
+            window.location.href = finalUrl;
+          } else {
+            document.getElementById('redirectMessage').innerHTML = 
+              'Please open this link on your iPhone or iPad<br>where VenturLink is installed.';
+          }
         } else {
           // No tokens, just redirect
-          window.location.href = decodedRedirect;
+          if (isMobileDevice()) {
+            window.location.href = decodedRedirect;
+          } else {
+            document.getElementById('redirectMessage').innerHTML = 
+              'Please open this link on your iPhone or iPad<br>where VenturLink is installed.';
+          }
         }
       } else {
         // No redirect_to parameter, use default redirect
