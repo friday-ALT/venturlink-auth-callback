@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Email Verification Successful - VenturLink</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+        'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+        sans-serif;
+      background: linear-gradient(135deg, #39FF14 0%, #00D4FF 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+    
+    .container {
+      background: white;
+      border-radius: 24px;
+      padding: 48px 32px;
+      max-width: 400px;
+      width: 100%;
+      text-align: center;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+      animation: fadeInUp 0.6s ease-out;
+    }
+    
+    @keyframes fadeInUp {
+      from {
+        opacity: 0;
+        transform: translateY(30px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    
+    .success-icon {
+      width: 80px;
+      height: 80px;
+      margin: 0 auto 24px;
+      background: linear-gradient(135deg, #39FF14 0%, #00D4FF 100%);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      animation: scaleIn 0.5s ease-out 0.2s both;
+    }
+    
+    @keyframes scaleIn {
+      from {
+        transform: scale(0);
+      }
+      to {
+        transform: scale(1);
+      }
+    }
+    
+    .checkmark {
+      width: 40px;
+      height: 40px;
+      position: relative;
+    }
+    
+    .checkmark::after {
+      content: '';
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 12px;
+      height: 24px;
+      border: solid white;
+      border-width: 0 4px 4px 0;
+      transform: translate(-50%, -60%) rotate(45deg);
+    }
+    
+    h1 {
+      font-size: 28px;
+      font-weight: 700;
+      color: #0f172a;
+      margin-bottom: 12px;
+      line-height: 1.2;
+    }
+    
+    .subtitle {
+      font-size: 16px;
+      color: #64748b;
+      margin-bottom: 32px;
+      line-height: 1.5;
+    }
+    
+    .redirect-message {
+      font-size: 14px;
+      color: #94a3b8;
+      margin-top: 24px;
+      animation: pulse 2s ease-in-out infinite;
+    }
+    
+    @keyframes pulse {
+      0%, 100% {
+        opacity: 0.6;
+      }
+      50% {
+        opacity: 1;
+      }
+    }
+    
+    .logo-text {
+      font-size: 24px;
+      font-weight: 700;
+      background: linear-gradient(135deg, #39FF14 0%, #00D4FF 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 8px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="success-icon">
+      <div class="checkmark"></div>
+    </div>
+    <div class="logo-text">VenturLink</div>
+    <h1>Email Verification Successful!</h1>
+    <p class="subtitle">
+      Your email has been verified. You're being redirected to the app...
+    </p>
+    <p class="redirect-message" id="redirectMessage">
+      Opening VenturLink...
+    </p>
+  </div>
+
+  <script>
+    // Extract tokens from URL hash or query parameters
+    function extractTokens() {
+      const hash = window.location.hash.substring(1);
+      const query = window.location.search.substring(1);
+      const params = new URLSearchParams(hash || query);
+      
+      const accessToken = params.get('access_token');
+      const refreshToken = params.get('refresh_token');
+      const type = params.get('type');
+      
+      return { accessToken, refreshToken, type };
+    }
+    
+    // Build app deep link URL
+    function buildAppUrl(tokens) {
+      const { accessToken, refreshToken, type } = tokens;
+      if (!accessToken || !refreshToken) {
+        return null;
+      }
+      
+      const hashParts = [];
+      if (accessToken) hashParts.push(`access_token=${encodeURIComponent(accessToken)}`);
+      if (refreshToken) hashParts.push(`refresh_token=${encodeURIComponent(refreshToken)}`);
+      if (type) hashParts.push(`type=${encodeURIComponent(type)}`);
+      
+      return `venturlink://auth/callback#${hashParts.join('&')}`;
+    }
+    
+    // Redirect to app
+    function redirectToApp() {
+      const tokens = extractTokens();
+      const appUrl = buildAppUrl(tokens);
+      
+      if (appUrl) {
+        // Try to open the app
+        window.location.href = appUrl;
+        
+        // Fallback: If app doesn't open within 2 seconds, show instructions
+        setTimeout(() => {
+          document.getElementById('redirectMessage').innerHTML = 
+            'If the app didn\'t open automatically,<br>please open VenturLink manually.';
+        }, 2000);
+      } else {
+        // No tokens found - might be a direct redirect
+        // Check if redirect_to parameter exists
+        const urlParams = new URLSearchParams(window.location.search);
+        const redirectTo = urlParams.get('redirect_to');
+        
+        if (redirectTo) {
+          window.location.href = decodeURIComponent(redirectTo);
+        } else {
+          // Fallback: try to redirect to app anyway
+          window.location.href = 'venturlink://auth/callback';
+        }
+      }
+    }
+    
+    // Handle redirect_to parameter from Supabase callback
+    function handleSupabaseCallback() {
+      const urlParams = new URLSearchParams(window.location.search);
+      const redirectTo = urlParams.get('redirect_to');
+      
+      if (redirectTo) {
+        // Supabase callback with redirect_to parameter
+        // Extract tokens from current URL and append to redirect_to
+        const tokens = extractTokens();
+        const decodedRedirect = decodeURIComponent(redirectTo);
+        
+        if (tokens.accessToken && tokens.refreshToken) {
+          // Build URL with tokens
+          const hashParts = [];
+          hashParts.push(`access_token=${encodeURIComponent(tokens.accessToken)}`);
+          hashParts.push(`refresh_token=${encodeURIComponent(tokens.refreshToken)}`);
+          if (tokens.type) hashParts.push(`type=${encodeURIComponent(tokens.type)}`);
+          
+          const finalUrl = `${decodedRedirect}#${hashParts.join('&')}`;
+          window.location.href = finalUrl;
+        } else {
+          // No tokens, just redirect
+          window.location.href = decodedRedirect;
+        }
+      } else {
+        // No redirect_to parameter, use default redirect
+        redirectToApp();
+      }
+    }
+    
+    // Start redirect process
+    handleSupabaseCallback();
+  </script>
+</body>
+</html>
+
